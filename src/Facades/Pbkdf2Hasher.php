@@ -9,7 +9,7 @@ class Pbkdf2Hasher extends Facade
 {
     protected $algo = 'sha512';
     protected $iterations = '100001';
-    protected $length = null;
+    protected $length = 0;
 
     # fixed at the moment
     protected $hashing_method = 'pbkdf2'; 
@@ -29,8 +29,29 @@ class Pbkdf2Hasher extends Facade
         return 'pbkdf2hasher';
     }
 
+    /**
+     * NOTE: Declaring info function from Laravel AbstractHasher since HashManager will call
+     * it to determine if rehashing is required.
+     *
+     * @param $hashedValue
+     * @return array
+     */
+    public function info($hashedValue)
+    {
+        preg_match('/(.+?)\:(.+?)\:(.+?)\$(.+?)\$(.*)/', $hashedValue, $matches);
 
-    public function info($hashedValue){}
+        if (! $matches) {
+            return [];
+        }
+
+        return [
+            'algoName' => $matches[1],
+            'algo' => $matches[2],
+            'iterations' => $matches[3],
+            'salt' => $matches[4],
+            'hash' => $matches[5],
+        ];
+    }
 
 
     /**
@@ -43,7 +64,9 @@ class Pbkdf2Hasher extends Facade
         $this->iterations = $options['iterations'] ?? $this->iterations;
         $this->length = $options['length'] ?? $this->length;
         $this->salt = $options['salt'] ??  $salt = bin2hex(openssl_random_pseudo_bytes(8));
+
         $hash = hash_pbkdf2($this->algo, $value, $this->salt, $this->iterations, $this->length);
+
         return sprintf("%s:%s:%s$%s$%s", $this->hashing_method, $this->algo, $this->iterations, $this->salt, $hash);
     }
 
@@ -54,12 +77,9 @@ class Pbkdf2Hasher extends Facade
             return false;
         }
 
-        preg_match('/(.+?)\:(.+?)\:(.+?)\$(.+?)\$(.*)/', $hashedValue, $matches);
-        if ($matches) {
-            $options['algo'] = $matches[2];
-            $options['iterations'] = $matches[3];
-            $options['salt'] =  $matches[4];
-            $hash =  $matches[5];
+        $hashInfo = $this->info($hashedValue);
+        if (! empty($hashInfo)) {
+            $options = array_merge($options, $hashInfo);
         } else {
             return false;
         }
@@ -68,6 +88,9 @@ class Pbkdf2Hasher extends Facade
     }
 
 
-    public function needsRehash($hashedValue, array $options = []) {}
+    public function needsRehash($hashedValue, array $options = [])
+    {
+        return false;
+    }
 
 }

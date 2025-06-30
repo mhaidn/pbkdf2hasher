@@ -12,7 +12,7 @@
     "homepage": "https://github.com/markhofstetter/pbkdf2hasher",
     "keywords": ["Laravel", "Pbkdf2Hasher"],
     "require": {
-        "illuminate/support": "*"
+        "illuminate/support": "^11"
     },
     "require-dev": {
         "phpunit/phpunit": "~7.0",
